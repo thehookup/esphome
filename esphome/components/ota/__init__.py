@@ -13,7 +13,16 @@ DEPENDENCIES = ['network']
 ota_ns = cg.esphome_ns.namespace('ota')
 OTAComponent = ota_ns.class_('OTAComponent', cg.Component)
 
-CONFIG_SCHEMA = cv.Schema({
+def validate(config):
+    safe_mode_config = [CONF_NUM_ATTEMPTS, CONF_REBOOT_TIMEOUT,
+        CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]
+    if any(config_option in config for config_option in safe_mode_config) and \
+        not config[CONF_SAFE_MODE]:
+        raise cv.Invalid(f"Cannot have {CONF_NUM_ATTEMPTS}, {CONF_REBOOT_TIMEOUT}, or "
+            f"{CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK} without safe mode enabled!" )
+    return config
+
+CONFIG_SCHEMA = cv.All(cv.Schema({
     cv.GenerateID(): cv.declare_id(OTAComponent),
     cv.Optional(CONF_SAFE_MODE, default=True): cv.boolean,
     cv.SplitDefault(CONF_PORT, esp8266=8266, esp32=3232): cv.port,
@@ -21,8 +30,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_REBOOT_TIMEOUT, default='5min'): cv.positive_time_period_milliseconds,
     cv.Optional(CONF_NUM_ATTEMPTS, default='10'): cv.positive_not_null_int,
     cv.Optional(CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK, default=True): cv.boolean
-}).extend(cv.COMPONENT_SCHEMA)
-
+}).extend(cv.COMPONENT_SCHEMA), validate)
 
 @coroutine_with_priority(50.0)
 def to_code(config):
