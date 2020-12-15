@@ -13,14 +13,16 @@ DEPENDENCIES = ['network']
 ota_ns = cg.esphome_ns.namespace('ota')
 OTAComponent = ota_ns.class_('OTAComponent', cg.Component)
 
+
 def validate(config):
     safe_mode_config = [CONF_NUM_ATTEMPTS, CONF_REBOOT_TIMEOUT,
-        CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]
+                        CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]
     if any(config_option in config for config_option in safe_mode_config) and \
-        not config[CONF_SAFE_MODE]:
+            not config[CONF_SAFE_MODE]:
         raise cv.Invalid(f"Cannot have {CONF_NUM_ATTEMPTS}, {CONF_REBOOT_TIMEOUT}, or "
-            f"{CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK} without safe mode enabled!" )
+                         f"{CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK} without safe mode enabled!")
     return config
+
 
 CONFIG_SCHEMA = cv.All(cv.Schema({
     cv.GenerateID(): cv.declare_id(OTAComponent),
@@ -32,6 +34,7 @@ CONFIG_SCHEMA = cv.All(cv.Schema({
     cv.Optional(CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK, default=True): cv.boolean
 }).extend(cv.COMPONENT_SCHEMA), validate)
 
+
 @coroutine_with_priority(50.0)
 def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -42,7 +45,7 @@ def to_code(config):
 
     if config[CONF_SAFE_MODE]:
         cg.add(var.start_safe_mode(config[CONF_NUM_ATTEMPTS], config[CONF_REBOOT_TIMEOUT],
-        config[CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]))
+                                   config[CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]))
 
     if CORE.is_esp8266:
         cg.add_library('Update', None)
