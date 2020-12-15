@@ -156,6 +156,7 @@ ota:
   port: 3286
   reboot_timeout: 2min
   num_attempts: 5
+  store_bootloops_in_flash_and_brick: true
 
 logger:
   baud_rate: 0
@@ -201,7 +202,7 @@ mcp23s08:
   - id: 'mcp23s08_hub'
     cs_pin: GPIO12
     deviceaddress: 0
-    
+
 mcp23s17:
   - id: 'mcp23s17_hub'
     cs_pin: GPIO12
