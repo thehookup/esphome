@@ -2,7 +2,8 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_ID, CONF_NUM_ATTEMPTS, CONF_PASSWORD,
-    CONF_PORT, CONF_REBOOT_TIMEOUT, CONF_SAFE_MODE
+    CONF_PORT, CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK, CONF_REBOOT_TIMEOUT,
+    CONF_SAFE_MODE
 )
 from esphome.core import CORE, coroutine_with_priority
 
@@ -18,7 +19,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.SplitDefault(CONF_PORT, esp8266=8266, esp32=3232): cv.port,
     cv.Optional(CONF_PASSWORD, default=''): cv.string,
     cv.Optional(CONF_REBOOT_TIMEOUT, default='5min'): cv.positive_time_period_milliseconds,
-    cv.Optional(CONF_NUM_ATTEMPTS, default='10'): cv.positive_not_null_int
+    cv.Optional(CONF_NUM_ATTEMPTS, default='10'): cv.positive_not_null_int,
+    cv.Optional(CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK, default=True): cv.boolean
 }).extend(cv.COMPONENT_SCHEMA)
 
 
@@ -31,7 +33,8 @@ def to_code(config):
     yield cg.register_component(var, config)
 
     if config[CONF_SAFE_MODE]:
-        cg.add(var.start_safe_mode(config[CONF_NUM_ATTEMPTS], config[CONF_REBOOT_TIMEOUT]))
+        cg.add(var.start_safe_mode(config[CONF_NUM_ATTEMPTS], config[CONF_REBOOT_TIMEOUT],
+        config[CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]))
 
     if CORE.is_esp8266:
         cg.add_library('Update', None)
