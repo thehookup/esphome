@@ -44,7 +44,7 @@ void OTAComponent::loop() {
     this->has_safe_mode_ = false;
     // successful boot, reset counter
     ESP_LOGI(TAG, "Boot seems successful, resetting boot loop counter.");
-    this->clean_rtc();
+    this->clean_prefs();
   }
 }
 
@@ -368,7 +368,7 @@ void OTAComponent::start_safe_mode(uint8_t num_attempts, uint32_t enable_time,
 
   if (this->safe_mode_prefs_value_ >= num_attempts) {
     if (!store_bootloops_in_flash_and_brick) {
-      this->clean_rtc();
+      this->clean_prefs();
     }
 
     ESP_LOGE(TAG, "Boot loop detected. Proceeding to safe mode.");
@@ -398,10 +398,10 @@ uint32_t OTAComponent::read_prefs_() {
     return 0;
   return val;
 }
-void OTAComponent::clean_rtc() { this->write_prefs_(0); }
+void OTAComponent::clean_prefs() { this->write_prefs_(0); }
 void OTAComponent::on_safe_shutdown() {
   if (this->has_safe_mode_)
-    this->clean_rtc();
+    this->clean_prefs();
 }
 
 }  // namespace ota

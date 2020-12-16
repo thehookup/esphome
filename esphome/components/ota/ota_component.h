@@ -58,7 +58,7 @@ class OTAComponent : public Component {
 
   uint16_t get_port() const;
 
-  void clean_rtc();
+  void clean_prefs();
 
   void on_safe_shutdown() override;
 
