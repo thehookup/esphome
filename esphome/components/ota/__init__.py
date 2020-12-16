@@ -31,7 +31,7 @@ CONFIG_SCHEMA = cv.All(cv.Schema({
     cv.Optional(CONF_PASSWORD, default=''): cv.string,
     cv.Optional(CONF_REBOOT_TIMEOUT, default='5min'): cv.positive_time_period_milliseconds,
     cv.Optional(CONF_NUM_ATTEMPTS, default='10'): cv.positive_not_null_int,
-    cv.Optional(CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK, default=True): cv.boolean
+    cv.Optional(CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK, default=False): cv.boolean
 }).extend(cv.COMPONENT_SCHEMA), validate)
 
 
