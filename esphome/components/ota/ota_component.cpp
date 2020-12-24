@@ -362,7 +362,6 @@ void OTAComponent::start_safe_mode(uint8_t num_attempts, uint32_t enable_time,
   this->safe_mode_enable_time_ = enable_time;
   this->safe_mode_num_attempts_ = num_attempts;
 
-  this->prefs_;
   if (store_bootloops_in_flash_and_brick) {
     this->prefs_ = global_preferences.make_preference<uint32_t>(233825507UL, store_bootloops_in_flash_and_brick);
   } else {
