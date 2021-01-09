@@ -47,7 +47,10 @@ class OTAComponent : public Component {
   /// Manually set the port OTA should listen on.
   void set_port(uint16_t port);
 
-  void start_safe_mode(uint8_t num_attempts, uint32_t enable_time, bool store_bootloops_in_flash_and_brick);
+  /// Configures safe mode
+  void set_bootloops_in_flash(bool in_flash);
+
+  void start_safe_mode(uint8_t enable_boots, uint8_t perm_boots, uint32_t enable_time);
 
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)
@@ -77,10 +80,12 @@ class OTAComponent : public Component {
   WiFiClient client_{};
 
   bool has_safe_mode_{false};              ///< stores whether safe mode can be enabled.
+  bool bootloops_in_flash_;                ///< stores whether bootloops should be in flash.
   uint32_t safe_mode_start_time_;          ///< stores when safe mode was enabled.
   uint32_t safe_mode_enable_time_{60000};  ///< The time safe mode should be on for.
   uint32_t safe_mode_prefs_value_;
-  uint8_t safe_mode_num_attempts_;
+  uint8_t safe_mode_enable_boots_;         ///< enable safe mode if exceeded.
+  uint8_t safe_mode_perm_boots_;           ///< permanently enable if exceeded.
   ESPPreferenceObject prefs_;
 };
 

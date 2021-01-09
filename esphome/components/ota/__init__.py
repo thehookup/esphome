@@ -13,6 +13,8 @@ DEPENDENCIES = ['network']
 ota_ns = cg.esphome_ns.namespace('ota')
 OTAComponent = ota_ns.class_('OTAComponent', cg.Component)
 
+def deep_sleep_disabled():
+    return 'deep_sleep' not in CORE.config
 
 def validate(config):
     safe_mode_config = [CONF_NUM_ATTEMPTS, CONF_REBOOT_TIMEOUT,
@@ -21,6 +23,8 @@ def validate(config):
             not config[CONF_SAFE_MODE]:
         raise cv.Invalid(f"Cannot have {CONF_NUM_ATTEMPTS}, {CONF_REBOOT_TIMEOUT}, or "
                          f"{CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK} without safe mode enabled!")
+    # validate that perm boots is greater than start boots
+    # validate that num boots and perm boots is less than 255 and greater than 0
     return config
 
 
@@ -46,6 +50,8 @@ def to_code(config):
     if config[CONF_SAFE_MODE]:
         cg.add(var.start_safe_mode(config[CONF_NUM_ATTEMPTS], config[CONF_REBOOT_TIMEOUT],
                                    config[CONF_STORE_BOOTLOOPS_IN_FLASH_AND_BRICK]))
+    if 'deep_sleep' in CORE.config:
+        print("deep sleep")
 
     if CORE.is_esp8266:
         cg.add_library('Update', None)

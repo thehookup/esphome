@@ -32,8 +32,16 @@ void OTAComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "  Using Password.");
   }
   if (this->has_safe_mode_ && this->safe_mode_prefs_value_ > 1) {
-    ESP_LOGW(TAG, "Last Boot was an unhandled reset, will proceed to safe mode in %d restarts",
-             this->safe_mode_num_attempts_ - this->safe_mode_prefs_value_);
+    if (this->safe_mode_prefs_value_ > this->safe_mode_perm_boots_) {
+      ESP_LOGW(TAG, "Boot attempts have exceeded %d restarts, will permanently enter safe mode",
+               this->safe_mode_perm_boots_)
+    } else if (this->safe_mode_prefs_value_ > this->safe_mode_enable_boots_) {
+      ESP_LOGW(TAG, "Boot attempts have exceeded %d restarts, will alternate entering safe mode",
+               this->safe_mode_enable_boots_)
+    } else {
+      ESP_LOGW(TAG, "Last Boot was an unhandled reset, will proceed to safe mode in %d restarts",
+               this->safe_mode_enable_boots_ - this->safe_mode_prefs_value_);
+    }
   }
 }
 
@@ -355,33 +363,29 @@ void OTAComponent::set_auth_password(const std::string &password) { this->passwo
 float OTAComponent::get_setup_priority() const { return setup_priority::AFTER_WIFI; }
 uint16_t OTAComponent::get_port() const { return this->port_; }
 void OTAComponent::set_port(uint16_t port) { this->port_ = port; }
-void OTAComponent::start_safe_mode(uint8_t num_attempts, uint32_t enable_time,
-                                   bool store_bootloops_in_flash_and_brick) {
+void OTAComponent::set_bootloops_in_flash(uint16_t enable_boots) { this->bootloops_in_flash_ = in_flash }
+void OTAComponent::start_safe_mode(uint8_t enable_boots, uint8_t perm_boots, uint32_t enable_time) {
   this->has_safe_mode_ = true;
   this->safe_mode_start_time_ = millis();
   this->safe_mode_enable_time_ = enable_time;
-  this->safe_mode_num_attempts_ = num_attempts;
+  this->safe_mode_enable_boots_ = enable_boots;
+  this->safe_mode_perm_boots_ = perm_boots;
 
-  if (store_bootloops_in_flash_and_brick) {
-    this->prefs_ = global_preferences.make_preference<uint32_t>(233825507UL, store_bootloops_in_flash_and_brick);
-  } else {
-    this->prefs_ = global_preferences.make_preference<uint32_t>(233825507UL);
-  }
+  this->prefs_ = global_preferences.make_preference<uint32_t>(233825507UL, this->bootloops_in_flash_);
 
+  // number of unhandled boot attempts
   this->safe_mode_prefs_value_ = this->read_prefs_();
 
   ESP_LOGCONFIG(TAG, "There have been %u suspected unsuccessful boot attempts.", this->safe_mode_prefs_value_);
 
   if (this->safe_mode_prefs_value_ >= num_attempts) {
-    if (!store_bootloops_in_flash_and_brick) {
-      this->clean_prefs();
-    }
-
+    
     ESP_LOGE(TAG, "Boot loop detected. Proceeding to safe mode.");
 
     this->status_set_error();
     this->set_timeout(enable_time, []() {
       ESP_LOGE(TAG, "No OTA attempt made, restarting.");
+      this->clean_prefs();
       App.reboot();
     });
 
