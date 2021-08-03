@@ -126,7 +126,8 @@ void ESPPreferences::save_esp8266_flash_() {
 }
 
 bool ESPPreferenceObject::save_internal_() {
-  if (this->in_flash_) {
+  uint32_t current_time = millis();
+  if (this->in_flash_ && (current_time - this->last_save_time_) >= global_preferences.max_write_interval_) {
     for (uint32_t i = 0; i <= this->length_words_; i++) {
       uint32_t j = this->offset_ + i;
       if (j >= ESP8266_FLASH_STORAGE_SIZE)
@@ -138,6 +139,7 @@ bool ESPPreferenceObject::save_internal_() {
       *ptr = v;
     }
     global_preferences.save_esp8266_flash_();
+    this->last_save_time_ = current_time;
     return true;
   }
 
@@ -172,7 +174,8 @@ ESPPreferences::ESPPreferences()
     // which will be reset each time OTA occurs
     : current_offset_(0) {}
 
-void ESPPreferences::begin() {
+void ESPPreferences::begin(uint32_t max_write_interval) {
+  this->max_write_interval_ = max_write_interval;
   this->flash_storage_ = new uint32_t[ESP8266_FLASH_STORAGE_SIZE];
   ESP_LOGVV(TAG, "Loading preferences from flash...");
 
@@ -228,6 +231,10 @@ bool ESPPreferences::is_prevent_write() { return this->prevent_write_; }
 
 #ifdef ARDUINO_ARCH_ESP32
 bool ESPPreferenceObject::save_internal_() {
+  uint32_t current_time = millis();
+  if (current_time - this->last_save_time_) < global_preferences.max_write_interval_)
+    return false;
+
   if (global_preferences.nvs_handle_ == 0)
     return false;
 
@@ -244,6 +251,7 @@ bool ESPPreferenceObject::save_internal_() {
     ESP_LOGV(TAG, "nvs_commit('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
     return false;
   }
+  this->last_save_time_ = current_time;
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {

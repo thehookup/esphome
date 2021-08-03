@@ -32,6 +32,8 @@ class ESPPreferenceObject {
   size_t length_words_;
   uint32_t type_;
   uint32_t *data_;
+
+  uint32_t last_save_time_{0};
 #ifdef ARDUINO_ARCH_ESP8266
   bool in_flash_{false};
 #endif
@@ -52,7 +54,7 @@ static const bool DEFAULT_IN_FLASH = true;
 class ESPPreferences {
  public:
   ESPPreferences();
-  void begin();
+  void begin(uint32_t max_write_interval);
   ESPPreferenceObject make_preference(size_t length, uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
   template<typename T> ESPPreferenceObject make_preference(uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
 
@@ -70,6 +72,8 @@ class ESPPreferences {
 
  protected:
   friend ESPPreferenceObject;
+
+  uint32_t max_write_interval_;
 
   uint32_t current_offset_;
 #ifdef ARDUINO_ARCH_ESP32

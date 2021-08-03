@@ -24,6 +24,7 @@ from esphome.const import (
     CONF_PROJECT,
     CONF_TRIGGER_ID,
     CONF_ESP8266_RESTORE_FROM_FLASH,
+    CONF_MAX_WRITE_INTERVAL,
     ARDUINO_VERSION_ESP8266,
     ARDUINO_VERSION_ESP32,
     CONF_VERSION,
@@ -161,6 +162,9 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_NAME): cv.hostname,
         cv.Required(CONF_PLATFORM): cv.one_of("ESP8266", "ESP32", upper=True),
         cv.Required(CONF_BOARD): validate_board,
+        cv.Optional(
+            CONF_MAX_WRITE_INTERVAL, default="1s"
+        ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_COMMENT): cv.string,
         cv.Optional(
             CONF_ARDUINO_VERSION, default="recommended"
@@ -317,6 +321,7 @@ async def to_code(config):
             config[CONF_NAME],
             cg.RawExpression('__DATE__ ", " __TIME__'),
             config[CONF_NAME_ADD_MAC_SUFFIX],
+            config[CONF_MAX_WRITE_INTERVAL],
         )
     )
 
