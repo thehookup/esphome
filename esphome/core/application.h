@@ -43,7 +43,8 @@ namespace esphome {
 
 class Application {
  public:
-  void pre_setup(const std::string &name, const char *compilation_time, bool name_add_mac_suffix, uint32_t max_write_interval) {
+  void pre_setup(const std::string &name, const char *compilation_time, bool name_add_mac_suffix,
+                 uint32_t max_write_interval) {
     this->name_add_mac_suffix_ = name_add_mac_suffix;
     if (name_add_mac_suffix) {
       this->name_ = name + "-" + get_mac_address().substr(6);

@@ -232,7 +232,7 @@ bool ESPPreferences::is_prevent_write() { return this->prevent_write_; }
 #ifdef ARDUINO_ARCH_ESP32
 bool ESPPreferenceObject::save_internal_() {
   uint32_t current_time = millis();
-  if (current_time - this->last_save_time_) < global_preferences.max_write_interval_)
+  if ((current_time - this->last_save_time_) < global_preferences.max_write_interval_)
     return false;
 
   if (global_preferences.nvs_handle_ == 0)
