@@ -280,7 +280,8 @@ bool ESPPreferenceObject::load_internal_() {
   return true;
 }
 ESPPreferences::ESPPreferences() : current_offset_(0) {}
-void ESPPreferences::begin() {
+void ESPPreferences::begin(uint32_t max_write_interval) {
+  this->max_write_interval_ = max_write_interval;
   auto ns = truncate_string(App.get_name(), 15);
   esp_err_t err = nvs_open(ns.c_str(), NVS_READWRITE, &this->nvs_handle_);
   if (err) {
