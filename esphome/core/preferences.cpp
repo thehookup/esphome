@@ -73,9 +73,10 @@ static inline bool esp_rtc_user_mem_read(uint32_t index, uint32_t *dest) {
   return true;
 }
 
-static bool esp8266_flash_dirty = false;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+static bool flash_dirty = false;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 static inline bool esp_rtc_user_mem_write(uint32_t index, uint32_t value) {
+  ESP_LOGV(TAG, "In esp rtc user mem write, index: %d, value: %d", index, value);
   if (index >= ESP_RTC_USER_MEM_SIZE_WORDS) {
     return false;
   }
@@ -100,11 +101,9 @@ static const uint32_t get_esp8266_flash_sector() {
 }
 static const uint32_t get_esp8266_flash_address() { return get_esp8266_flash_sector() * SPI_FLASH_SEC_SIZE; }
 
-void ESPPreferences::save_esp8266_flash_() {
-  if (!esp8266_flash_dirty)
-    return;
-
+bool ESPPreferences::commit_to_flash_() {
   ESP_LOGVV(TAG, "Saving preferences to flash...");
+  ESP_LOGV(TAG, "Actually writing...");
   SpiFlashOpResult erase_res, write_res = SPI_FLASH_RESULT_OK;
   {
     InterruptLock lock;
@@ -115,19 +114,32 @@ void ESPPreferences::save_esp8266_flash_() {
   }
   if (erase_res != SPI_FLASH_RESULT_OK) {
     ESP_LOGV(TAG, "Erase ESP8266 flash failed!");
-    return;
+    return false;
   }
   if (write_res != SPI_FLASH_RESULT_OK) {
     ESP_LOGV(TAG, "Write ESP8266 flash failed!");
-    return;
+    return false;
   }
+  return true;
+}
 
-  esp8266_flash_dirty = false;
+void ESPPreferences::loop() {
+  const uint32_t current_time = millis();
+  if ((current_time - this->last_write_time_) < global_preferences.max_write_interval_)
+    return;
+
+  if (!flash_dirty)
+    return;
+
+  if (global_preferences.commit_to_flash_()) {
+    flash_dirty = false;
+  }
+  // reset write time regardless of successful write to prevent attempting write on every loop on failure
+  this->last_write_time_ = current_time;
 }
 
 bool ESPPreferenceObject::save_internal_() {
-  uint32_t current_time = millis();
-  if (this->in_flash_ && (current_time - this->last_save_time_) >= global_preferences.max_write_interval_) {
+  if (this->in_flash_) {
     for (uint32_t i = 0; i <= this->length_words_; i++) {
       uint32_t j = this->offset_ + i;
       if (j >= ESP8266_FLASH_STORAGE_SIZE)
@@ -135,19 +147,19 @@ bool ESPPreferenceObject::save_internal_() {
       uint32_t v = this->data_[i];
       uint32_t *ptr = &global_preferences.flash_storage_[j];
       if (*ptr != v)
-        esp8266_flash_dirty = true;
+        flash_dirty = true;
       *ptr = v;
     }
-    global_preferences.save_esp8266_flash_();
-    this->last_save_time_ = current_time;
     return true;
   }
 
   for (uint32_t i = 0; i <= this->length_words_; i++) {
-    if (!esp_rtc_user_mem_write(this->offset_ + i, this->data_[i]))
+    if (!esp_rtc_user_mem_write(this->offset_ + i, this->data_[i])) {
+      ESP_LOGV(TAG, "Couldn't write returning false");
       return false;
+    }
   }
-
+  ESP_LOGV(TAG, "Wrote returning true");
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
@@ -231,10 +243,6 @@ bool ESPPreferences::is_prevent_write() { return this->prevent_write_; }
 
 #ifdef ARDUINO_ARCH_ESP32
 bool ESPPreferenceObject::save_internal_() {
-  uint32_t current_time = millis();
-  if ((current_time - this->last_save_time_) < global_preferences.max_write_interval_)
-    return false;
-
   if (global_preferences.nvs_handle_ == 0)
     return false;
 
@@ -246,12 +254,7 @@ bool ESPPreferenceObject::save_internal_() {
     ESP_LOGV(TAG, "nvs_set_blob('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
     return false;
   }
-  err = nvs_commit(global_preferences.nvs_handle_);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_commit('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
-    return false;
-  }
-  this->last_save_time_ = current_time;
+  flash_dirty = true;
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
@@ -295,6 +298,17 @@ void ESPPreferences::begin(uint32_t max_write_interval) {
       this->nvs_handle_ = 0;
     }
   }
+}
+bool ESPPreferences::commit_to_flash_() {
+  if (global_preferences.nvs_handle_ == 0)
+    return false;
+
+  err = nvs_commit(global_preferences.nvs_handle_);
+  if (err) {
+    ESP_LOGV(TAG, "nvs_commit('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
+    return false;
+  }
+  return true;
 }
 
 ESPPreferenceObject ESPPreferences::make_preference(size_t length, uint32_t type, bool in_flash) {

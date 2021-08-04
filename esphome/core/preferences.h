@@ -32,8 +32,6 @@ class ESPPreferenceObject {
   size_t length_words_;
   uint32_t type_;
   uint32_t *data_;
-
-  uint32_t last_save_time_{0};
 #ifdef ARDUINO_ARCH_ESP8266
   bool in_flash_{false};
 #endif
@@ -57,6 +55,7 @@ class ESPPreferences {
   void begin(uint32_t max_write_interval);
   ESPPreferenceObject make_preference(size_t length, uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
   template<typename T> ESPPreferenceObject make_preference(uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
+  void loop();
 
 #ifdef ARDUINO_ARCH_ESP8266
   /** On the ESP8266, we can't override the first 128 bytes during OTA uploads
@@ -76,11 +75,13 @@ class ESPPreferences {
   uint32_t max_write_interval_;
 
   uint32_t current_offset_;
+
+  bool commit_to_flash_();
+  uint32_t last_write_time_{0};
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
 #endif
 #ifdef ARDUINO_ARCH_ESP8266
-  void save_esp8266_flash_();
   bool prevent_write_{false};
   uint32_t *flash_storage_;
   uint32_t current_flash_offset_;

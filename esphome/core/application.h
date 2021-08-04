@@ -294,6 +294,8 @@ class Application {
   uint32_t loop_interval_{16};
   int dump_config_at_{-1};
   uint32_t app_state_{0};
+
+  uint32_t last_write_time_{0};
 };
 
 /// Global storage of Application pointer - only one Application can exist.
