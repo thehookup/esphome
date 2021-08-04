@@ -66,7 +66,7 @@ class ESPPreferences : public Component {
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)
   void pre_setup(uint32_t flash_write_interval);
-  void setup();
+  void setup() override;
   float get_setup_priority() const override;
   void dump_config() override;
   void loop() override;
