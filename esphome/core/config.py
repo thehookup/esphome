@@ -163,7 +163,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_PLATFORM): cv.one_of("ESP8266", "ESP32", upper=True),
         cv.Required(CONF_BOARD): validate_board,
         cv.Optional(
-            CONF_MAX_WRITE_INTERVAL, default="1s"
+            CONF_FLASH_WRITE_INTERVAL, default="1s"
         ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_COMMENT): cv.string,
         cv.Optional(
