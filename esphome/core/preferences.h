@@ -56,6 +56,12 @@ class ESPPreferences : public Component {
   void begin(uint32_t flash_write_interval);
   ESPPreferenceObject make_preference(size_t length, uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
   template<typename T> ESPPreferenceObject make_preference(uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
+  /**
+   * Commit pending writes to flash.
+   *
+   * @return true if write is successful.
+   */
+  bool sync();
 
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)
@@ -87,12 +93,6 @@ class ESPPreferences : public Component {
   bool commit_to_flash_();
   bool flash_dirty_{false};
   uint32_t last_write_time_{0};
-  /**
-   * Commit pending writes to flash.
-   *
-   * @return true if write is successful.
-   */
-  bool sync_();
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
 #endif
