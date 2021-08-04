@@ -76,7 +76,6 @@ static inline bool esp_rtc_user_mem_read(uint32_t index, uint32_t *dest) {
 static bool flash_dirty = false;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 static inline bool esp_rtc_user_mem_write(uint32_t index, uint32_t value) {
-  ESP_LOGV(TAG, "In esp rtc user mem write, index: %d, value: %d", index, value);
   if (index >= ESP_RTC_USER_MEM_SIZE_WORDS) {
     return false;
   }
@@ -103,7 +102,6 @@ static const uint32_t get_esp8266_flash_address() { return get_esp8266_flash_sec
 
 bool ESPPreferences::commit_to_flash_() {
   ESP_LOGVV(TAG, "Saving preferences to flash...");
-  ESP_LOGV(TAG, "Actually writing...");
   SpiFlashOpResult erase_res, write_res = SPI_FLASH_RESULT_OK;
   {
     InterruptLock lock;
@@ -155,11 +153,9 @@ bool ESPPreferenceObject::save_internal_() {
 
   for (uint32_t i = 0; i <= this->length_words_; i++) {
     if (!esp_rtc_user_mem_write(this->offset_ + i, this->data_[i])) {
-      ESP_LOGV(TAG, "Couldn't write returning false");
       return false;
     }
   }
-  ESP_LOGV(TAG, "Wrote returning true");
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
