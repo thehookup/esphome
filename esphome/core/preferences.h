@@ -70,6 +70,7 @@ class ESPPreferences : public Component {
   float get_setup_priority() const override;
   void dump_config() override;
   void loop() override;
+  void on_shutdown() override;
 
 #ifdef ARDUINO_ARCH_ESP8266
   /** On the ESP8266, we can't override the first 128 bytes during OTA uploads

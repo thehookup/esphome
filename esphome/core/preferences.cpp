@@ -79,6 +79,7 @@ bool ESPPreferences::sync() {
   this->last_write_time_ = millis();
   return true;
 }
+void ESPPreferences::on_shutdown() { this->sync(); }
 
 #ifdef ARDUINO_ARCH_ESP8266
 
