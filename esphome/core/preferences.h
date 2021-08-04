@@ -53,13 +53,13 @@ static const bool DEFAULT_IN_FLASH = true;
 class ESPPreferences : public Component {
  public:
   ESPPreferences();
-  void begin(uint32_t max_write_interval);
+  void begin(uint32_t flash_write_interval);
   ESPPreferenceObject make_preference(size_t length, uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
   template<typename T> ESPPreferenceObject make_preference(uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
 
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)
-  void pre_setup(uint32_t max_write_interval);
+  void pre_setup(uint32_t flash_write_interval);
   void setup();
   float get_setup_priority() const override;
   void dump_config() override;
@@ -80,7 +80,7 @@ class ESPPreferences : public Component {
  protected:
   friend ESPPreferenceObject;
 
-  uint32_t max_write_interval_;
+  uint32_t flash_write_interval_;
 
   uint32_t current_offset_;
 

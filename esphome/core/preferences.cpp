@@ -63,7 +63,7 @@ void ESPPreferences::dump_config() {
 float ESPPreferences::get_setup_priority() const { return setup_priority::BUS; }
 void ESPPreferences::setup() { this->dump_config(); }
 void ESPPreferences::loop() {
-  if ((millis() - this->last_write_time_) < global_preferences.max_write_interval_)
+  if ((millis() - this->last_write_time_) < global_preferences.flash_write_interval_)
     return;
 
   this->sync_();
@@ -193,8 +193,8 @@ ESPPreferences::ESPPreferences()
     // which will be reset each time OTA occurs
     : current_offset_(0) {}
 
-void ESPPreferences::pre_setup(uint32_t max_write_interval) {
-  this->max_write_interval_ = max_write_interval;
+void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
+  this->flash_write_interval_ = flash_write_interval;
   this->flash_storage_ = new uint32_t[ESP8266_FLASH_STORAGE_SIZE];
   ESP_LOGVV(TAG, "Loading preferences from flash...");
 
@@ -290,8 +290,8 @@ bool ESPPreferenceObject::load_internal_() {
   return true;
 }
 ESPPreferences::ESPPreferences() : current_offset_(0) {}
-void ESPPreferences::pre_setup(uint32_t max_write_interval) {
-  this->max_write_interval_ = max_write_interval;
+void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
+  this->flash_write_interval_ = flash_write_interval;
   auto ns = truncate_string(App.get_name(), 15);
   esp_err_t err = nvs_open(ns.c_str(), NVS_READWRITE, &this->nvs_handle_);
   if (err) {

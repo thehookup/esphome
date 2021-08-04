@@ -24,7 +24,7 @@ from esphome.const import (
     CONF_PROJECT,
     CONF_TRIGGER_ID,
     CONF_ESP8266_RESTORE_FROM_FLASH,
-    CONF_MAX_WRITE_INTERVAL,
+    CONF_FLASH_WRITE_INTERVAL,
     ARDUINO_VERSION_ESP8266,
     ARDUINO_VERSION_ESP32,
     CONF_VERSION,
@@ -323,7 +323,7 @@ async def to_code(config):
             config[CONF_NAME_ADD_MAC_SUFFIX],
         )
     )
-    cg.add(cg.GlobalPreferences.pre_setup(config[CONF_MAX_WRITE_INTERVAL]))
+    cg.add(cg.GlobalPreferences.pre_setup(config[CONF_FLASH_WRITE_INTERVAL]))
     cg.add(cg.RawExpression("App.register_component(&global_preferences);"))
 
     CORE.add_job(_add_automations, config)
