@@ -38,7 +38,7 @@ bool ESPPreferenceObject::load_() {
             YESNO(valid), this->data_[0], this->data_[1], this->type_, this->calculate_crc_());
   return valid;
 }
-bool ESPPreferenceObject::save_() {
+bool ESPPreferenceObject::save_(bool immediate_sync) {
   if (!this->is_initialized()) {
     ESP_LOGV(TAG, "Save Pref Not initialized!");
     return false;
@@ -49,6 +49,10 @@ bool ESPPreferenceObject::save_() {
     return false;
   ESP_LOGVV(TAG, "SAVE %u: 0=0x%08X 1=0x%08X (Type=%u, CRC=0x%08X)", this->offset_,  // NOLINT
             this->data_[0], this->data_[1], this->type_, this->calculate_crc_());
+  if (immediate_sync) {
+    if (!global_preferences.sync_())
+      return false;
+  }
   return true;
 }
 
@@ -59,18 +63,21 @@ void ESPPreferences::dump_config() {
 float ESPPreferences::get_setup_priority() const { return setup_priority::BUS; }
 void ESPPreferences::setup() { this->dump_config(); }
 void ESPPreferences::loop() {
-  const uint32_t current_time = millis();
-  if ((current_time - this->last_write_time_) < global_preferences.max_write_interval_)
+  if ((millis() - this->last_write_time_) < global_preferences.max_write_interval_)
     return;
 
+  this->sync_();
+}
+bool ESPPreferences::sync_() {
   if (!this->flash_dirty_)
-    return;
+    return true;
 
   if (global_preferences.commit_to_flash_()) {
     this->flash_dirty_ = false;
   }
   // reset write time regardless of successful write to prevent attempting write on every loop on failure
-  this->last_write_time_ = current_time;
+  this->last_write_time_ = millis();
+  return true;
 }
 
 #ifdef ARDUINO_ARCH_ESP8266

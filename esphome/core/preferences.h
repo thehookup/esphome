@@ -13,7 +13,7 @@ class ESPPreferenceObject {
   ESPPreferenceObject();
   ESPPreferenceObject(size_t offset, size_t length, uint32_t type);
 
-  template<typename T> bool save(T *src);
+  template<typename T> bool save(T *src, bool immediate_sync = false);
 
   template<typename T> bool load(T *dest);
 
@@ -22,7 +22,7 @@ class ESPPreferenceObject {
  protected:
   friend class ESPPreferences;
 
-  bool save_();
+  bool save_(bool immediate_sync);
   bool load_();
   bool save_internal_();
   bool load_internal_();
@@ -87,6 +87,12 @@ class ESPPreferences : public Component {
   bool commit_to_flash_();
   bool flash_dirty_{false};
   uint32_t last_write_time_{0};
+  /**
+   * Commit pending writes to flash.
+   *
+   * @return true if write is successful.
+   */
+  bool sync_();
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
 #endif
@@ -103,12 +109,12 @@ template<typename T> ESPPreferenceObject ESPPreferences::make_preference(uint32_
   return this->make_preference((sizeof(T) + 3) / 4, type, in_flash);
 }
 
-template<typename T> bool ESPPreferenceObject::save(T *src) {
+template<typename T> bool ESPPreferenceObject::save(T *src, bool immediate_sync) {
   if (!this->is_initialized())
     return false;
   memset(this->data_, 0, this->length_words_ * 4);
   memcpy(this->data_, src, sizeof(T));
-  return this->save_();
+  return this->save_(immediate_sync);
 }
 
 template<typename T> bool ESPPreferenceObject::load(T *dest) {
