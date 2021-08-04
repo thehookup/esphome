@@ -324,7 +324,7 @@ async def to_code(config):
         )
     )
     cg.add(cg.GlobalPreferences.pre_setup(config[CONF_MAX_WRITE_INTERVAL]))
-    await cg.register_component(cg.GlobalPreferences, {})
+    cg.add(cg.RawExpression("App.register_component(&global_preferences);"))
 
     CORE.add_job(_add_automations, config)
 
