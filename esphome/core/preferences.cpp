@@ -58,7 +58,7 @@ bool ESPPreferenceObject::save_(bool immediate_sync) {
 
 void ESPPreferences::dump_config() {
   ESP_LOGCONFIG(TAG, "ESP Preferences:");
-  ESP_LOGCONFIG(TAG, "  Flash Write Interval (millis): %d", this->max_write_interval_);
+  ESP_LOGCONFIG(TAG, "  Flash Write Interval (millis): %d", this->flash_write_interval_);
 }
 float ESPPreferences::get_setup_priority() const { return setup_priority::BUS; }
 void ESPPreferences::setup() { this->dump_config(); }
