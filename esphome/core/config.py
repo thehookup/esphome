@@ -321,9 +321,9 @@ async def to_code(config):
             config[CONF_NAME],
             cg.RawExpression('__DATE__ ", " __TIME__'),
             config[CONF_NAME_ADD_MAC_SUFFIX],
-            config[CONF_MAX_WRITE_INTERVAL],
         )
     )
+    cg.add(cg.GlobalPreferences.pre_setup(config[CONF_MAX_WRITE_INTERVAL]))
 
     CORE.add_job(_add_automations, config)
 

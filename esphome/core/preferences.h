@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "esphome/core/component.h"
 #include "esphome/core/esphal.h"
 #include "esphome/core/defines.h"
 
@@ -49,13 +50,20 @@ static const bool DEFAULT_IN_FLASH = false;
 static const bool DEFAULT_IN_FLASH = true;
 #endif
 
-class ESPPreferences {
+class ESPPreferences : public Component {
  public:
   ESPPreferences();
   void begin(uint32_t max_write_interval);
   ESPPreferenceObject make_preference(size_t length, uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
   template<typename T> ESPPreferenceObject make_preference(uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
-  void loop();
+
+  // ========== INTERNAL METHODS ==========
+  // (In most use cases you won't need these)
+  void pre_setup(uint32_t max_write_interval);
+  void setup();
+  float get_setup_priority() const override;
+  void dump_config() override;
+  void loop() override;
 
 #ifdef ARDUINO_ARCH_ESP8266
   /** On the ESP8266, we can't override the first 128 bytes during OTA uploads

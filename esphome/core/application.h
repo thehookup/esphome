@@ -43,8 +43,7 @@ namespace esphome {
 
 class Application {
  public:
-  void pre_setup(const std::string &name, const char *compilation_time, bool name_add_mac_suffix,
-                 uint32_t max_write_interval) {
+  void pre_setup(const std::string &name, const char *compilation_time, bool name_add_mac_suffix) {
     this->name_add_mac_suffix_ = name_add_mac_suffix;
     if (name_add_mac_suffix) {
       this->name_ = name + "-" + get_mac_address().substr(6);
@@ -52,7 +51,6 @@ class Application {
       this->name_ = name;
     }
     this->compilation_time_ = compilation_time;
-    global_preferences.begin(max_write_interval);
   }
 
 #ifdef USE_BINARY_SENSOR
@@ -294,8 +292,6 @@ class Application {
   uint32_t loop_interval_{16};
   int dump_config_at_{-1};
   uint32_t app_state_{0};
-
-  uint32_t last_write_time_{0};
 };
 
 /// Global storage of Application pointer - only one Application can exist.
