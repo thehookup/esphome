@@ -299,7 +299,7 @@ bool ESPPreferences::commit_to_flash_() {
 
   esp_err_t err = nvs_commit(global_preferences.nvs_handle_);
   if (err) {
-    ESP_LOGV(TAG, "nvs_commit('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
+    ESP_LOGV(TAG, "nvs_commit() failed: %s", esp_err_to_name(err));
     return false;
   }
   return true;
