@@ -52,6 +52,21 @@ bool ESPPreferenceObject::save_() {
   return true;
 }
 
+void ESPPreferences::loop() {
+  const uint32_t current_time = millis();
+  if ((current_time - this->last_write_time_) < global_preferences.max_write_interval_)
+    return;
+
+  if (!this->flash_dirty_)
+    return;
+
+  if (global_preferences.commit_to_flash_()) {
+    this->flash_dirty_ = false;
+  }
+  // reset write time regardless of successful write to prevent attempting write on every loop on failure
+  this->last_write_time_ = current_time;
+}
+
 #ifdef ARDUINO_ARCH_ESP8266
 
 static const uint32_t ESP_RTC_USER_MEM_START = 0x60001200;
@@ -72,8 +87,6 @@ static inline bool esp_rtc_user_mem_read(uint32_t index, uint32_t *dest) {
   *dest = ESP_RTC_USER_MEM[index];
   return true;
 }
-
-static bool flash_dirty = false;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 static inline bool esp_rtc_user_mem_write(uint32_t index, uint32_t value) {
   if (index >= ESP_RTC_USER_MEM_SIZE_WORDS) {
@@ -121,21 +134,6 @@ bool ESPPreferences::commit_to_flash_() {
   return true;
 }
 
-void ESPPreferences::loop() {
-  const uint32_t current_time = millis();
-  if ((current_time - this->last_write_time_) < global_preferences.max_write_interval_)
-    return;
-
-  if (!flash_dirty)
-    return;
-
-  if (global_preferences.commit_to_flash_()) {
-    flash_dirty = false;
-  }
-  // reset write time regardless of successful write to prevent attempting write on every loop on failure
-  this->last_write_time_ = current_time;
-}
-
 bool ESPPreferenceObject::save_internal_() {
   if (this->in_flash_) {
     for (uint32_t i = 0; i <= this->length_words_; i++) {
@@ -145,7 +143,7 @@ bool ESPPreferenceObject::save_internal_() {
       uint32_t v = this->data_[i];
       uint32_t *ptr = &global_preferences.flash_storage_[j];
       if (*ptr != v)
-        flash_dirty = true;
+        global_preferences.flash_dirty_ = true;
       *ptr = v;
     }
     return true;
@@ -250,7 +248,7 @@ bool ESPPreferenceObject::save_internal_() {
     ESP_LOGV(TAG, "nvs_set_blob('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
     return false;
   }
-  flash_dirty = true;
+  global_preferences.flash_dirty_ = true;
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {

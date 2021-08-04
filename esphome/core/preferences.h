@@ -77,6 +77,7 @@ class ESPPreferences {
   uint32_t current_offset_;
 
   bool commit_to_flash_();
+  bool flash_dirty_{false};
   uint32_t last_write_time_{0};
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
