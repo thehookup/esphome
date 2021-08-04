@@ -72,7 +72,8 @@ bool ESPPreferences::sync() {
   if (!this->flash_dirty_)
     return true;
 
-  if (global_preferences.commit_to_flash_()) {
+  bool result = global_preferences.commit_to_flash_();
+  if (result) {
     this->flash_dirty_ = false;
   }
   // reset write time regardless of successful write to prevent attempting write on every loop on failure
