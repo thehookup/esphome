@@ -78,7 +78,7 @@ bool ESPPreferences::sync() {
   }
   // reset write time regardless of successful write to prevent attempting write on every loop on failure
   this->last_write_time_ = millis();
-  return true;
+  return result;
 }
 void ESPPreferences::on_shutdown() { this->sync(); }
 
@@ -165,9 +165,8 @@ bool ESPPreferenceObject::save_internal_() {
   }
 
   for (uint32_t i = 0; i <= this->length_words_; i++) {
-    if (!esp_rtc_user_mem_write(this->offset_ + i, this->data_[i])) {
+    if (!esp_rtc_user_mem_write(this->offset_ + i, this->data_[i]))
       return false;
-    }
   }
   return true;
 }
