@@ -400,7 +400,7 @@ bool OTAComponent::should_enter_safe_mode(uint8_t num_attempts, uint32_t enable_
     return false;
   }
 }
-void OTAComponent::write_rtc_(uint32_t val) { this->rtc_.save(&val, true); }
+void OTAComponent::write_rtc_(uint32_t val) { this->rtc_.save(&val); }
 uint32_t OTAComponent::read_rtc_() {
   uint32_t val;
   if (!this->rtc_.load(&val))
