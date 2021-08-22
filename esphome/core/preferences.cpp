@@ -38,7 +38,7 @@ bool ESPPreferenceObject::load_() {
             YESNO(valid), this->data_[0], this->data_[1], this->type_, this->calculate_crc_());
   return valid;
 }
-bool ESPPreferenceObject::save_() {
+bool ESPPreferenceObject::save_(bool immediate_sync) {
   if (!this->is_initialized()) {
     ESP_LOGV(TAG, "Save Pref Not initialized!");
     return false;
@@ -49,8 +49,38 @@ bool ESPPreferenceObject::save_() {
     return false;
   ESP_LOGVV(TAG, "SAVE %u: 0=0x%08X 1=0x%08X (Type=%u, CRC=0x%08X)", this->offset_,  // NOLINT
             this->data_[0], this->data_[1], this->type_, this->calculate_crc_());
+  if (immediate_sync) {
+    if (!global_preferences.sync())
+      return false;
+  }
   return true;
 }
+
+void ESPPreferences::dump_config() {
+  ESP_LOGCONFIG(TAG, "ESP Preferences:");
+  ESP_LOGCONFIG(TAG, "  Flash Write Interval (millis): %d", this->flash_write_interval_);
+}
+float ESPPreferences::get_setup_priority() const { return setup_priority::BUS; }
+void ESPPreferences::setup() { this->dump_config(); }
+void ESPPreferences::loop() {
+  if ((millis() - this->last_write_time_) < global_preferences.flash_write_interval_)
+    return;
+
+  this->sync();
+}
+bool ESPPreferences::sync() {
+  if (!this->flash_dirty_)
+    return true;
+
+  bool result = global_preferences.commit_to_flash_();
+  if (result) {
+    this->flash_dirty_ = false;
+  }
+  // reset write time regardless of successful write to prevent attempting write on every loop on failure
+  this->last_write_time_ = millis();
+  return result;
+}
+void ESPPreferences::on_shutdown() { this->sync(); }
 
 #ifdef ARDUINO_ARCH_ESP8266
 
@@ -72,8 +102,6 @@ static inline bool esp_rtc_user_mem_read(uint32_t index, uint32_t *dest) {
   *dest = ESP_RTC_USER_MEM[index];
   return true;
 }
-
-static bool esp8266_flash_dirty = false;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 static inline bool esp_rtc_user_mem_write(uint32_t index, uint32_t value) {
   if (index >= ESP_RTC_USER_MEM_SIZE_WORDS) {
@@ -100,10 +128,7 @@ static const uint32_t get_esp8266_flash_sector() {
 }
 static const uint32_t get_esp8266_flash_address() { return get_esp8266_flash_sector() * SPI_FLASH_SEC_SIZE; }
 
-void ESPPreferences::save_esp8266_flash_() {
-  if (!esp8266_flash_dirty)
-    return;
-
+bool ESPPreferences::commit_to_flash_() {
   ESP_LOGVV(TAG, "Saving preferences to flash...");
   SpiFlashOpResult erase_res, write_res = SPI_FLASH_RESULT_OK;
   {
@@ -115,14 +140,13 @@ void ESPPreferences::save_esp8266_flash_() {
   }
   if (erase_res != SPI_FLASH_RESULT_OK) {
     ESP_LOGV(TAG, "Erase ESP8266 flash failed!");
-    return;
+    return false;
   }
   if (write_res != SPI_FLASH_RESULT_OK) {
     ESP_LOGV(TAG, "Write ESP8266 flash failed!");
-    return;
+    return false;
   }
-
-  esp8266_flash_dirty = false;
+  return true;
 }
 
 bool ESPPreferenceObject::save_internal_() {
@@ -134,10 +158,9 @@ bool ESPPreferenceObject::save_internal_() {
       uint32_t v = this->data_[i];
       uint32_t *ptr = &global_preferences.flash_storage_[j];
       if (*ptr != v)
-        esp8266_flash_dirty = true;
+        global_preferences.flash_dirty_ = true;
       *ptr = v;
     }
-    global_preferences.save_esp8266_flash_();
     return true;
   }
 
@@ -145,7 +168,6 @@ bool ESPPreferenceObject::save_internal_() {
     if (!esp_rtc_user_mem_write(this->offset_ + i, this->data_[i]))
       return false;
   }
-
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
@@ -172,7 +194,8 @@ ESPPreferences::ESPPreferences()
     // which will be reset each time OTA occurs
     : current_offset_(0) {}
 
-void ESPPreferences::begin() {
+void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
+  this->flash_write_interval_ = flash_write_interval;
   this->flash_storage_ = new uint32_t[ESP8266_FLASH_STORAGE_SIZE];
   ESP_LOGVV(TAG, "Loading preferences from flash...");
 
@@ -239,11 +262,7 @@ bool ESPPreferenceObject::save_internal_() {
     ESP_LOGV(TAG, "nvs_set_blob('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
     return false;
   }
-  err = nvs_commit(global_preferences.nvs_handle_);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_commit('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
-    return false;
-  }
+  global_preferences.flash_dirty_ = true;
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
@@ -272,7 +291,8 @@ bool ESPPreferenceObject::load_internal_() {
   return true;
 }
 ESPPreferences::ESPPreferences() : current_offset_(0) {}
-void ESPPreferences::begin() {
+void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
+  this->flash_write_interval_ = flash_write_interval;
   auto ns = truncate_string(App.get_name(), 15);
   esp_err_t err = nvs_open(ns.c_str(), NVS_READWRITE, &this->nvs_handle_);
   if (err) {
@@ -286,6 +306,17 @@ void ESPPreferences::begin() {
       this->nvs_handle_ = 0;
     }
   }
+}
+bool ESPPreferences::commit_to_flash_() {
+  if (global_preferences.nvs_handle_ == 0)
+    return false;
+
+  esp_err_t err = nvs_commit(global_preferences.nvs_handle_);
+  if (err) {
+    ESP_LOGV(TAG, "nvs_commit() failed: %s", esp_err_to_name(err));
+    return false;
+  }
+  return true;
 }
 
 ESPPreferenceObject ESPPreferences::make_preference(size_t length, uint32_t type, bool in_flash) {

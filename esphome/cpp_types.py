@@ -19,6 +19,7 @@ const_char_ptr = global_ns.namespace("const char *")
 NAN = global_ns.namespace("NAN")
 esphome_ns = global_ns  # using namespace esphome;
 App = esphome_ns.App
+GlobalPreferences = esphome_ns.global_preferences
 Nameable = esphome_ns.class_("Nameable")
 Component = esphome_ns.class_("Component")
 ComponentPtr = Component.operator("ptr")
