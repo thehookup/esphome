@@ -1,3 +1,4 @@
+from esphome.cpp_types import App
 import logging
 import os
 import re
@@ -323,8 +324,8 @@ async def to_code(config):
             config[CONF_NAME_ADD_MAC_SUFFIX],
         )
     )
-    cg.add(cg.GlobalPreferences.pre_setup(config[CONF_FLASH_WRITE_INTERVAL]))
-    cg.add(cg.RawExpression("App.register_component(&global_preferences);"))
+    cg.add(cg.global_preferences.pre_setup(config[CONF_FLASH_WRITE_INTERVAL]))
+    cg.add(App.register_component(cg.global_preferences.operator("address")))
 
     CORE.add_job(_add_automations, config)
 
