@@ -66,7 +66,7 @@ from esphome.cpp_types import (  # noqa
     NAN,
     esphome_ns,
     App,
-    GlobalPreferences,
+    global_preferences,
     Nameable,
     Component,
     ComponentPtr,
