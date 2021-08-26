@@ -49,7 +49,7 @@ bool ESPPreferenceObject::save_(bool immediate_sync) {
     return false;
   ESP_LOGVV(TAG, "SAVE %u: 0=0x%08X 1=0x%08X (Type=%u, CRC=0x%08X)", this->offset_,  // NOLINT
             this->data_[0], this->data_[1], this->type_, this->calculate_crc_());
-  if (immediate_sync) {
+  if (immediate_sync || this->flash_write_interval_ == 0) {
     if (!global_preferences.sync())
       return false;
   }

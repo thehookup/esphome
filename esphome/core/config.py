@@ -1,8 +1,8 @@
-from esphome.cpp_types import App
 import logging
 import os
 import re
 
+from esphome.cpp_types import App
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation, boards
@@ -164,7 +164,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_PLATFORM): cv.one_of("ESP8266", "ESP32", upper=True),
         cv.Required(CONF_BOARD): validate_board,
         cv.Optional(
-            CONF_FLASH_WRITE_INTERVAL, default="1s"
+            CONF_FLASH_WRITE_INTERVAL, default="1min"
         ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_COMMENT): cv.string,
         cv.Optional(
