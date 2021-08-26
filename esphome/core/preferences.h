@@ -62,6 +62,12 @@ class ESPPreferences : public Component {
    * @return true if write is successful.
    */
   bool sync();
+  /**
+   * Run sync if required interval has passed
+   *
+   * @return true if write is successful or if interval has not been met.
+   */
+  bool sync_at_interval_();
 
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)
