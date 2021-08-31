@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "esphome/core/component.h"
 #include "esphome/core/esphal.h"
 #include "esphome/core/defines.h"
 
@@ -12,7 +13,7 @@ class ESPPreferenceObject {
   ESPPreferenceObject();
   ESPPreferenceObject(size_t offset, size_t length, uint32_t type);
 
-  template<typename T> bool save(T *src);
+  template<typename T> bool save(T *src, bool immediate_sync = false);
 
   template<typename T> bool load(T *dest);
 
@@ -21,7 +22,7 @@ class ESPPreferenceObject {
  protected:
   friend class ESPPreferences;
 
-  bool save_();
+  bool save_(bool immediate_sync);
   bool load_();
   bool save_internal_();
   bool load_internal_();
@@ -49,12 +50,33 @@ static const bool DEFAULT_IN_FLASH = false;
 static const bool DEFAULT_IN_FLASH = true;
 #endif
 
-class ESPPreferences {
+class ESPPreferences : public Component {
  public:
   ESPPreferences();
-  void begin();
+  void begin(uint32_t flash_write_interval);
   ESPPreferenceObject make_preference(size_t length, uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
   template<typename T> ESPPreferenceObject make_preference(uint32_t type, bool in_flash = DEFAULT_IN_FLASH);
+  /**
+   * Commit pending writes to flash.
+   *
+   * @return true if write is successful.
+   */
+  bool sync();
+  /**
+   * Run sync if required interval has passed
+   *
+   * @return true if write is successful or if interval has not been met.
+   */
+  bool sync_at_interval_();
+
+  // ========== INTERNAL METHODS ==========
+  // (In most use cases you won't need these)
+  void pre_setup(uint32_t flash_write_interval);
+  void setup() override;
+  float get_setup_priority() const override;
+  void dump_config() override;
+  void loop() override;
+  void on_shutdown() override;
 
 #ifdef ARDUINO_ARCH_ESP8266
   /** On the ESP8266, we can't override the first 128 bytes during OTA uploads
@@ -71,12 +93,17 @@ class ESPPreferences {
  protected:
   friend ESPPreferenceObject;
 
+  uint32_t flash_write_interval_;
+
   uint32_t current_offset_;
+
+  bool commit_to_flash_();
+  bool flash_dirty_{false};
+  uint32_t last_write_time_{0};
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
 #endif
 #ifdef ARDUINO_ARCH_ESP8266
-  void save_esp8266_flash_();
   bool prevent_write_{false};
   uint32_t *flash_storage_;
   uint32_t current_flash_offset_;
@@ -89,12 +116,12 @@ template<typename T> ESPPreferenceObject ESPPreferences::make_preference(uint32_
   return this->make_preference((sizeof(T) + 3) / 4, type, in_flash);
 }
 
-template<typename T> bool ESPPreferenceObject::save(T *src) {
+template<typename T> bool ESPPreferenceObject::save(T *src, bool immediate_sync) {
   if (!this->is_initialized())
     return false;
   memset(this->data_, 0, this->length_words_ * 4);
   memcpy(this->data_, src, sizeof(T));
-  return this->save_();
+  return this->save_(immediate_sync);
 }
 
 template<typename T> bool ESPPreferenceObject::load(T *dest) {

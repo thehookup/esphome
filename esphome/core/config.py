@@ -2,6 +2,7 @@ import logging
 import os
 import re
 
+from esphome.cpp_types import App
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation, boards
@@ -24,6 +25,7 @@ from esphome.const import (
     CONF_PROJECT,
     CONF_TRIGGER_ID,
     CONF_ESP8266_RESTORE_FROM_FLASH,
+    CONF_FLASH_WRITE_INTERVAL,
     ARDUINO_VERSION_ESP8266,
     ARDUINO_VERSION_ESP32,
     CONF_VERSION,
@@ -161,6 +163,9 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_NAME): cv.hostname,
         cv.Required(CONF_PLATFORM): cv.one_of("ESP8266", "ESP32", upper=True),
         cv.Required(CONF_BOARD): validate_board,
+        cv.Optional(
+            CONF_FLASH_WRITE_INTERVAL, default="1min"
+        ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_COMMENT): cv.string,
         cv.Optional(
             CONF_ARDUINO_VERSION, default="recommended"
@@ -319,6 +324,8 @@ async def to_code(config):
             config[CONF_NAME_ADD_MAC_SUFFIX],
         )
     )
+    cg.add(cg.global_preferences.pre_setup(config[CONF_FLASH_WRITE_INTERVAL]))
+    cg.add(App.register_component(cg.global_preferences.operator("address")))
 
     CORE.add_job(_add_automations, config)
 

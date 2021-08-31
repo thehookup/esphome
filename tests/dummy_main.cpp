@@ -13,6 +13,8 @@ using namespace esphome;
 
 void setup() {
   App.pre_setup("livingroom", __DATE__ ", " __TIME__, false);
+  global_preferences.pre_setup(10000);
+  App.register_component(&global_preferences);
   auto *log = new logger::Logger(115200, 512, logger::UART_SELECTION_UART0);
   log->pre_setup();
   App.register_component(log);
