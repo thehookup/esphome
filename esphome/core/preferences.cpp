@@ -130,7 +130,7 @@ static const uint32_t get_esp8266_flash_sector() {
 static const uint32_t get_esp8266_flash_address() { return get_esp8266_flash_sector() * SPI_FLASH_SEC_SIZE; }
 
 bool ESPPreferences::commit_to_flash_() {
-  ESP_LOGVV(TAG, "Saving preferences to flash...");
+  ESP_LOGD(TAG, "Saving preferences to flash...");
   SpiFlashOpResult erase_res, write_res = SPI_FLASH_RESULT_OK;
   {
     InterruptLock lock;
@@ -312,6 +312,7 @@ bool ESPPreferences::commit_to_flash_() {
   if (global_preferences.nvs_handle_ == 0)
     return false;
 
+  ESP_LOGD(TAG, "Saving preferences to flash...");
   esp_err_t err = nvs_commit(global_preferences.nvs_handle_);
   if (err) {
     ESP_LOGV(TAG, "nvs_commit() failed: %s", esp_err_to_name(err));
