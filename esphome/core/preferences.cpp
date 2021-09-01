@@ -11,6 +11,8 @@ extern "C" {
 #ifdef ARDUINO_ARCH_ESP32
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "wear_levelling.h"
+#include "esp_partition.h"
 #endif
 
 namespace esphome {
@@ -251,79 +253,82 @@ bool ESPPreferences::is_prevent_write() { return this->prevent_write_; }
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
+static const uint32_t ESP32_FLASH_STORAGE_SIZE_BYTES = 0x00F000;
+static const uint32_t ESP32_FLASH_STORAGE_SIZE_WORDS = ESP32_FLASH_STORAGE_SIZE_BYTES / 4;
 bool ESPPreferenceObject::save_internal_() {
-  if (global_preferences.nvs_handle_ == 0)
+  if (global_preferences.wl_handle_ == 0)
     return false;
 
-  char key[32];
-  sprintf(key, "%u", this->offset_);
-  uint32_t len = (this->length_words_ + 1) * 4;
-  esp_err_t err = nvs_set_blob(global_preferences.nvs_handle_, key, this->data_, len);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_set_blob('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
-    return false;
+  for (uint32_t i = 0; i <= this->length_words_; i++) {
+    uint32_t j = this->offset_ + i;
+    if (j >= ESP32_FLASH_STORAGE_SIZE_WORDS)
+      return false;
+    uint32_t v = this->data_[i];
+    uint32_t *ptr = &global_preferences.flash_storage_[j];
+    if (*ptr != v)
+      global_preferences.flash_dirty_ = true;
+    *ptr = v;
   }
-  global_preferences.flash_dirty_ = true;
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
-  if (global_preferences.nvs_handle_ == 0)
-    return false;
+  for (uint32_t i = 0; i <= this->length_words_; i++) {
+    uint32_t j = this->offset_ + i;
+    if (j >= ESP32_FLASH_STORAGE_SIZE_WORDS)
+      return false;
+    this->data_[i] = global_preferences.flash_storage_[j];
+  }
 
-  char key[32];
-  sprintf(key, "%u", this->offset_);
-  size_t len = (this->length_words_ + 1) * 4;
-
-  size_t actual_len;
-  esp_err_t err = nvs_get_blob(global_preferences.nvs_handle_, key, nullptr, &actual_len);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_get_blob('%s'): %s - the key might not be set yet", key, esp_err_to_name(err));
-    return false;
-  }
-  if (actual_len != len) {
-    ESP_LOGVV(TAG, "NVS length does not match. Assuming key changed (%u!=%u)", actual_len, len);
-    return false;
-  }
-  err = nvs_get_blob(global_preferences.nvs_handle_, key, this->data_, &len);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_get_blob('%s') failed: %s", key, esp_err_to_name(err));
-    return false;
-  }
   return true;
 }
 ESPPreferences::ESPPreferences() : current_offset_(0) {}
 void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
   this->flash_write_interval_ = flash_write_interval;
-  auto ns = truncate_string(App.get_name(), 15);
-  esp_err_t err = nvs_open(ns.c_str(), NVS_READWRITE, &this->nvs_handle_);
-  if (err) {
-    ESP_LOGW(TAG, "nvs_open failed: %s - erasing NVS...", esp_err_to_name(err));
-    nvs_flash_deinit();
-    nvs_flash_erase();
-    nvs_flash_init();
 
-    err = nvs_open(ns.c_str(), NVS_READWRITE, &this->nvs_handle_);
-    if (err) {
-      this->nvs_handle_ = 0;
-    }
+  // None of these log messages actual make it to serial because these are logged before logger is setup
+  const esp_partition_t *partition =
+      esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "spiffs");
+  esp_err_t err = wl_mount(partition, &this->wl_handle_);
+  if (err) {
+    this->wl_handle_ = 0;
+    ESP_LOGW(TAG, "wl_mount() failed: %s", esp_err_to_name(err));
+  }
+
+  if (this->wl_handle_ == 0)
+    return;
+
+  this->flash_storage_ = new uint32_t[ESP32_FLASH_STORAGE_SIZE_WORDS];
+  ESP_LOGVV(TAG, "Loading preferences from flash...");
+  esp_err_t err_read = wl_read(this->wl_handle_, 0, this->flash_storage_, ESP32_FLASH_STORAGE_SIZE_BYTES);
+  if (err_read) {
+    ESP_LOGW(TAG, "wl_read() failed: %s", esp_err_to_name(err));
   }
 }
 bool ESPPreferences::commit_to_flash_() {
-  if (global_preferences.nvs_handle_ == 0)
+  if (this->wl_handle_ == 0)
     return false;
 
   ESP_LOGD(TAG, "Saving preferences to flash...");
-  esp_err_t err = nvs_commit(global_preferences.nvs_handle_);
+  esp_err_t err = wl_erase_range(this->wl_handle_, 0, ESP32_FLASH_STORAGE_SIZE_BYTES);
   if (err) {
-    ESP_LOGV(TAG, "nvs_commit() failed: %s", esp_err_to_name(err));
+    ESP_LOGD(TAG, "wl_erase_range() failed: %s", esp_err_to_name(err));
+    return false;
+  }
+  err = wl_write(this->wl_handle_, 0, this->flash_storage_, ESP32_FLASH_STORAGE_SIZE_BYTES);
+  if (err) {
+    ESP_LOGD(TAG, "wl_write() failed: %s", esp_err_to_name(err));
     return false;
   }
   return true;
 }
 
 ESPPreferenceObject ESPPreferences::make_preference(size_t length, uint32_t type, bool in_flash) {
-  auto pref = ESPPreferenceObject(this->current_offset_, length, type);
-  this->current_offset_++;
+  uint32_t start = this->current_flash_offset_;
+  uint32_t end = start + length + 1;
+  if (end > ESP32_FLASH_STORAGE_SIZE_WORDS)
+    return {};
+  auto pref = ESPPreferenceObject(start, length, type);
+  this->current_flash_offset_ = end;
   return pref;
 }
 #endif

@@ -95,18 +95,19 @@ class ESPPreferences : public Component {
 
   uint32_t flash_write_interval_;
 
-  uint32_t current_offset_;
-
   bool commit_to_flash_();
   bool flash_dirty_{false};
   uint32_t last_write_time_{0};
+
+  uint32_t current_offset_;
+  uint32_t *flash_storage_;
+  uint32_t current_flash_offset_;
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
+  int32_t wl_handle_;
 #endif
 #ifdef ARDUINO_ARCH_ESP8266
   bool prevent_write_{false};
-  uint32_t *flash_storage_;
-  uint32_t current_flash_offset_;
 #endif
 };
 
