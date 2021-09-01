@@ -253,12 +253,9 @@ bool ESPPreferences::is_prevent_write() { return this->prevent_write_; }
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
-static const uint32_t ESP32_FLASH_STORAGE_SIZE_BYTES = 0x00F000;
+static const uint32_t ESP32_FLASH_STORAGE_SIZE_BYTES = 0x005000;
 static const uint32_t ESP32_FLASH_STORAGE_SIZE_WORDS = ESP32_FLASH_STORAGE_SIZE_BYTES / 4;
 bool ESPPreferenceObject::save_internal_() {
-  if (global_preferences.wl_handle_ == 0)
-    return false;
-
   for (uint32_t i = 0; i <= this->length_words_; i++) {
     uint32_t j = this->offset_ + i;
     if (j >= ESP32_FLASH_STORAGE_SIZE_WORDS)
@@ -272,6 +269,9 @@ bool ESPPreferenceObject::save_internal_() {
   return true;
 }
 bool ESPPreferenceObject::load_internal_() {
+  if (global_preferences.wl_handle_ == -1)
+    return false;
+
   for (uint32_t i = 0; i <= this->length_words_; i++) {
     uint32_t j = this->offset_ + i;
     if (j >= ESP32_FLASH_STORAGE_SIZE_WORDS)
@@ -290,11 +290,11 @@ void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
       esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "spiffs");
   esp_err_t err = wl_mount(partition, &this->wl_handle_);
   if (err) {
-    this->wl_handle_ = 0;
+    this->wl_handle_ = -1;
     ESP_LOGW(TAG, "wl_mount() failed: %s", esp_err_to_name(err));
   }
 
-  if (this->wl_handle_ == 0)
+  if (this->wl_handle_ == -1)
     return;
 
   this->flash_storage_ = new uint32_t[ESP32_FLASH_STORAGE_SIZE_WORDS];
@@ -305,18 +305,18 @@ void ESPPreferences::pre_setup(uint32_t flash_write_interval) {
   }
 }
 bool ESPPreferences::commit_to_flash_() {
-  if (this->wl_handle_ == 0)
+  if (this->wl_handle_ == -1)
     return false;
 
   ESP_LOGD(TAG, "Saving preferences to flash...");
   esp_err_t err = wl_erase_range(this->wl_handle_, 0, ESP32_FLASH_STORAGE_SIZE_BYTES);
   if (err) {
-    ESP_LOGD(TAG, "wl_erase_range() failed: %s", esp_err_to_name(err));
+    ESP_LOGW(TAG, "wl_erase_range() failed: %s", esp_err_to_name(err));
     return false;
   }
   err = wl_write(this->wl_handle_, 0, this->flash_storage_, ESP32_FLASH_STORAGE_SIZE_BYTES);
   if (err) {
-    ESP_LOGD(TAG, "wl_write() failed: %s", esp_err_to_name(err));
+    ESP_LOGW(TAG, "wl_write() failed: %s", esp_err_to_name(err));
     return false;
   }
   return true;
