@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "esphome/core/component.h"
 #include "esphome/core/esphal.h"
@@ -48,6 +49,17 @@ static const bool DEFAULT_IN_FLASH = false;
 
 #ifdef ARDUINO_ARCH_ESP32
 static const bool DEFAULT_IN_FLASH = true;
+#endif
+
+#ifdef ARDUINO_ARCH_ESP32
+struct NVSData {
+  char *key;
+  uint32_t len;
+  uint32_t *data;
+
+  bool flush();
+  bool operator==(const NVSData &rhs) const { return key == rhs.key && len == rhs.len && data == rhs.data; }
+};
 #endif
 
 class ESPPreferences : public Component {
@@ -102,6 +114,8 @@ class ESPPreferences : public Component {
   uint32_t last_write_time_{0};
 #ifdef ARDUINO_ARCH_ESP32
   uint32_t nvs_handle_;
+  std::vector<NVSData> nvs_cache_;
+  friend NVSData;
 #endif
 #ifdef ARDUINO_ARCH_ESP8266
   bool prevent_write_{false};
