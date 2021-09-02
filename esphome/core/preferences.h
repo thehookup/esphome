@@ -53,12 +53,9 @@ static const bool DEFAULT_IN_FLASH = true;
 
 #ifdef ARDUINO_ARCH_ESP32
 struct NVSData {
-  char *key;
+  size_t offset;
   uint32_t len;
   uint32_t *data;
-
-  bool flush();
-  bool operator==(const NVSData &rhs) const { return key == rhs.key && len == rhs.len && data == rhs.data; }
 };
 #endif
 
