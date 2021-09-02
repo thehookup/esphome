@@ -251,40 +251,23 @@ bool ESPPreferences::is_prevent_write() { return this->prevent_write_; }
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
-bool NVSData::flush() {
-  esp_err_t err = nvs_set_blob(global_preferences.nvs_handle_, this->key, this->data, len);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_set_blob('%s', len=%u) failed: %s", this->key, len, esp_err_to_name(err));
-    return false;
-  }
-  err = nvs_commit(global_preferences.nvs_handle_);
-  if (err) {
-    ESP_LOGV(TAG, "nvs_commit('%s', len=%u) failed: %s", key, len, esp_err_to_name(err));
-    return false;
-  }
-  return true;
-}
 bool ESPPreferenceObject::save_internal_() {
   if (global_preferences.nvs_handle_ == 0)
     return false;
 
-  char key[32];
-  sprintf(key, "%u", this->offset_);
-
   bool found = false;
   for (NVSData nvs_data : global_preferences.nvs_cache_) {
-    if (strcmp(nvs_data.key, key) == 0) {
+    if (nvs_data.offset == this->offset_) {
       found = true;
       break;
     }
   }
   if (!found) {
     NVSData cache{
-        .key = (char *) malloc(sizeof(key)),
+        .offset = this->offset_,
         .len = (this->length_words_ + 1) * 4,
         .data = this->data_,
     };
-    memcpy(cache.key, key, sizeof(key));
     global_preferences.nvs_cache_.push_back(cache);
   }
 
@@ -341,10 +324,25 @@ bool ESPPreferences::commit_to_flash_() {
 
   bool success = true;
   while (!this->nvs_cache_.empty()) {
-    if (!this->nvs_cache_.back().flush()) {
+    NVSData cache = this->nvs_cache_.back();
+
+    char key[32];
+    sprintf(key, "%u", cache.offset);
+
+    esp_err_t err = nvs_set_blob(global_preferences.nvs_handle_, key, cache.data, cache.len);
+    if (err) {
+      ESP_LOGV(TAG, "nvs_set_blob('%s', len=%u) failed: %s", key, cache.len, esp_err_to_name(err));
       success = false;
     }
     this->nvs_cache_.pop_back();
+  }
+
+  // this doesn't actually do anything...
+  // https://github.com/espressif/esp-idf/blob/1cb31e50943bb757966ca91ed7f4852692a5b0ed/components/nvs_flash/src/nvs_handle_simple.cpp#L94
+  esp_err_t err = nvs_commit(global_preferences.nvs_handle_);
+  if (err) {
+    ESP_LOGV(TAG, "nvs_commit failed: %s", esp_err_to_name(err));
+    success = false;
   }
 
   return success;
