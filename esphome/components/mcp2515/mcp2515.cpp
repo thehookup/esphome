@@ -19,7 +19,14 @@ bool MCP2515::setup_internal() {
   if (this->reset_() == canbus::ERROR_FAIL)
     return false;
   this->set_bitrate_(this->bit_rate_, this->mcp_clock_);
+  set_filter_mask_(MASK::MASK0, true, 0x1FFFFFFF);
+  set_filter_mask_(MASK::MASK1, true, 0x1FFFFFFF);
   this->set_filter_(RXF::RXF0, true, 0x00002710);
+  this->set_filter_(RXF::RXF1, true, 0x00002710);
+  this->set_filter_(RXF::RXF2, true, 0x00002710);
+  this->set_filter_(RXF::RXF3, true, 0x00002710);
+  this->set_filter_(RXF::RXF4, true, 0x00002710);
+  this->set_filter_(RXF::RXF5, true, 0x00002710);
   this->set_mode_(this->mcp_mode_);
 
   ESP_LOGV(TAG, "setup done");
