@@ -20,6 +20,8 @@ bool MCP2515::setup_internal() {
     return false;
   this->set_bitrate_(this->bit_rate_, this->mcp_clock_);
   this->set_mode_(this->mcp_mode_);
+
+  this->set_filter_(RXF::RXF0, true, 0x00002710);
   ESP_LOGV(TAG, "setup done");
   return true;
 }
