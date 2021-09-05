@@ -1,1 +1,6 @@
 FROM esphome/esphome-lint:1.1
+
+RUN set -x \
+    && apt-get update \
+    && apt-get install -y \
+          dos2unix

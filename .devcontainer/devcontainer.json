@@ -3,7 +3,9 @@
   "context": "..",
   "dockerFile": "../docker/Dockerfile.dev",
   "postCreateCommand": [
-    "script/devcontainer-post-create"
+    "/bin/bash",
+    "-c",
+    "find script -type f -print0 | xargs -0 -n 1 -P 4 dos2unix && script/devcontainer-post-create"
   ],
   "runArgs": [
     "--privileged",
